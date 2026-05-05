@@ -1,64 +1,55 @@
-// Package differ provides functionality to compare two parsed .env files
-// and produce a structured diff result highlighting added, removed, and changed keys.
+// Package differ computes differences between two env maps.
 package differ
 
-// Status represents the diff status of a key.
-type Status string
+// ChangeType represents the kind of change detected.
+type ChangeType string
 
 const (
-	StatusAdded   Status = "added"
-	StatusRemoved Status = "removed"
-	StatusChanged Status = "changed"
-	StatusSame    Status = "same"
+	Added   ChangeType = "added"
+	Removed ChangeType = "removed"
+	Changed ChangeType = "changed"
 )
 
-// Entry represents a single diff entry for a key across two environments.
-type Entry struct {
+// DiffEntry represents a single key-level difference between two env maps.
+type DiffEntry struct {
 	Key      string
-	Status   Status
-	ValueA   string // value in the "base" env file
-	ValueB   string // value in the "target" env file
+	Type     ChangeType
+	OldValue string
+	NewValue string
 }
 
-// Result holds the full diff between two env maps.
-type Result struct {
-	Entries []Entry
-}
+// Diff computes the differences between a base env map and a target env map.
+// Keys present only in target are Added, keys only in base are Removed,
+// and keys present in both with different values are Changed.
+func Diff(base, target map[string]string) []DiffEntry {
+	var entries []DiffEntry
 
-// HasChanges returns true if any entry is not StatusSame.
-func (r *Result) HasChanges() bool {
-	for _, e := range r.Entries {
-		if e.Status != StatusSame {
-			return true
-		}
-	}
-	return false
-}
-
-// Diff compares two env maps (key -> value) and returns a Result.
-// mapA is considered the "base" and mapB the "target".
-func Diff(mapA, mapB map[string]string) Result {
-	seen := make(map[string]bool)
-	var entries []Entry
-
-	for k, vA := range mapA {
-		seen[k] = true
-		if vB, ok := mapB[k]; ok {
-			if vA == vB {
-				entries = append(entries, Entry{Key: k, Status: StatusSame, ValueA: vA, ValueB: vB})
-			} else {
-				entries = append(entries, Entry{Key: k, Status: StatusChanged, ValueA: vA, ValueB: vB})
-			}
-		} else {
-			entries = append(entries, Entry{Key: k, Status: StatusRemoved, ValueA: vA, ValueB: ""})
+	for k, tv := range target {
+		if bv, ok := base[k]; !ok {
+			entries = append(entries, DiffEntry{
+				Key:      k,
+				Type:     Added,
+				NewValue: tv,
+			})
+		} else if bv != tv {
+			entries = append(entries, DiffEntry{
+				Key:      k,
+				Type:     Changed,
+				OldValue: bv,
+				NewValue: tv,
+			})
 		}
 	}
 
-	for k, vB := range mapB {
-		if !seen[k] {
-			entries = append(entries, Entry{Key: k, Status: StatusAdded, ValueA: "", ValueB: vB})
+	for k, bv := range base {
+		if _, ok := target[k]; !ok {
+			entries = append(entries, DiffEntry{
+				Key:      k,
+				Type:     Removed,
+				OldValue: bv,
+			})
 		}
 	}
 
-	return Result{Entries: entries}
+	return entries
 }
