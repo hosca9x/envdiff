@@ -43,6 +43,15 @@ func TestSummarize_Empty(t *testing.T) {
 	}
 }
 
+// TestSummarize_TotalMatchesSum verifies that Total equals the sum of Added, Removed, and Changed.
+func TestSummarize_TotalMatchesSum(t *testing.T) {
+	s := reporter.Summarize(sampleEntries())
+	if s.Total != s.Added+s.Removed+s.Changed {
+		t.Errorf("expected Total (%d) == Added+Removed+Changed (%d+%d+%d)",
+			s.Total, s.Added, s.Removed, s.Changed)
+	}
+}
+
 func TestWriteSummary_Output(t *testing.T) {
 	var buf bytes.Buffer
 	r := reporter.New(&buf)
