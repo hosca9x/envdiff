@@ -89,10 +89,28 @@ func TestHasErrors_OnlyWarnings(t *testing.T) {
 	}
 }
 
+func TestHasErrors_Empty(t *testing.T) {
+	if validator.HasErrors(nil) {
+		t.Error("expected HasErrors to return false for nil slice")
+	}
+	if validator.HasErrors([]validator.Issue{}) {
+		t.Error("expected HasErrors to return false for empty slice")
+	}
+}
+
 func TestIssue_String(t *testing.T) {
 	i := validator.Issue{Key: "MY_KEY", Severity: "error", Message: "bad format"}
 	got := i.String()
 	expected := "[ERROR] MY_KEY: bad format"
+	if got != expected {
+		t.Errorf("expected %q, got %q", expected, got)
+	}
+}
+
+func TestIssue_String_Warning(t *testing.T) {
+	i := validator.Issue{Key: "SOME_KEY", Severity: "warning", Message: "empty value"}
+	got := i.String()
+	expected := "[WARNING] SOME_KEY: empty value"
 	if got != expected {
 		t.Errorf("expected %q, got %q", expected, got)
 	}
