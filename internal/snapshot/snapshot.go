@@ -60,3 +60,10 @@ func Load(path string) (*Snapshot, error) {
 	}
 	return &s, nil
 }
+
+// Get returns the value of the environment variable with the given key and
+// a boolean indicating whether the key was present in the snapshot.
+func (s *Snapshot) Get(key string) (string, bool) {
+	v, ok := s.Env[key]
+	return v, ok
+}
