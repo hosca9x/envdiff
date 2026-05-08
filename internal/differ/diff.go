@@ -1,55 +1,57 @@
-// Package differ computes differences between two env maps.
+// Package differ computes the difference between two env maps.
 package differ
 
-// ChangeType represents the kind of change detected.
-type ChangeType string
+import "sort"
 
-const (
-	Added   ChangeType = "added"
-	Removed ChangeType = "removed"
-	Changed ChangeType = "changed"
-)
+// Diff computes the difference between a source and target env map.
+// source is the "new" state; target is the "old" / baseline state.
+// Returns a slice of Entry values sorted by key.
+func Diff(source, target map[string]string) []Entry {
+	keys := make(map[string]struct{})
+	for k := range source {
+		keys[k] = struct{}{}
+	}
+	for k := range target {
+		keys[k] = struct{}{}
+	}
 
-// DiffEntry represents a single key-level difference between two env maps.
-type DiffEntry struct {
-	Key      string
-	Type     ChangeType
-	OldValue string
-	NewValue string
-}
+	entries := make([]Entry, 0, len(keys))
+	for k := range keys {
+		srcVal, inSrc := source[k]
+		tgtVal, inTgt := target[k]
 
-// Diff computes the differences between a base env map and a target env map.
-// Keys present only in target are Added, keys only in base are Removed,
-// and keys present in both with different values are Changed.
-func Diff(base, target map[string]string) []DiffEntry {
-	var entries []DiffEntry
-
-	for k, tv := range target {
-		if bv, ok := base[k]; !ok {
-			entries = append(entries, DiffEntry{
-				Key:      k,
-				Type:     Added,
-				NewValue: tv,
+		switch {
+		case inSrc && !inTgt:
+			entries = append(entries, Entry{
+				Key:        k,
+				ChangeType: Added,
+				NewValue:   srcVal,
 			})
-		} else if bv != tv {
-			entries = append(entries, DiffEntry{
-				Key:      k,
-				Type:     Changed,
-				OldValue: bv,
-				NewValue: tv,
+		case !inSrc && inTgt:
+			entries = append(entries, Entry{
+				Key:        k,
+				ChangeType: Removed,
+				OldValue:   tgtVal,
+			})
+		case srcVal != tgtVal:
+			entries = append(entries, Entry{
+				Key:        k,
+				ChangeType: Changed,
+				OldValue:   tgtVal,
+				NewValue:   srcVal,
+			})
+		default:
+			entries = append(entries, Entry{
+				Key:        k,
+				ChangeType: Unchanged,
+				OldValue:   tgtVal,
+				NewValue:   srcVal,
 			})
 		}
 	}
 
-	for k, bv := range base {
-		if _, ok := target[k]; !ok {
-			entries = append(entries, DiffEntry{
-				Key:      k,
-				Type:     Removed,
-				OldValue: bv,
-			})
-		}
-	}
-
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].Key < entries[j].Key
+	})
 	return entries
 }

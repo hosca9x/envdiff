@@ -7,75 +7,79 @@ import (
 )
 
 func TestDiff_NoChanges(t *testing.T) {
-	a := map[string]string{"FOO": "bar", "BAZ": "qux"}
-	b := map[string]string{"FOO": "bar", "BAZ": "qux"}
-
-	result := differ.Diff(a, b)
-	if result.HasChanges() {
-		t.Error("expected no changes, but HasChanges() returned true")
-	}
-	for _, e := range result.Entries {
-		if e.Status != differ.StatusSame {
-			t.Errorf("key %q: expected status %q, got %q", e.Key, differ.StatusSame, e.Status)
+	src := map[string]string{"FOO": "bar", "BAZ": "qux"}
+	tgt := map[string]string{"FOO": "bar", "BAZ": "qux"}
+	entries := differ.Diff(src, tgt)
+	for _, e := range entries {
+		if e.ChangeType != differ.Unchanged {
+			t.Errorf("expected Unchanged for key %q, got %s", e.Key, e.ChangeType)
 		}
 	}
 }
 
 func TestDiff_AddedKey(t *testing.T) {
-	a := map[string]string{"FOO": "bar"}
-	b := map[string]string{"FOO": "bar", "NEW_KEY": "newval"}
-
-	result := differ.Diff(a, b)
-	if !result.HasChanges() {
-		t.Fatal("expected changes, but HasChanges() returned false")
-	}
-	found := findEntry(result.Entries, "NEW_KEY")
+	src := map[string]string{"FOO": "bar", "NEW": "value"}
+	tgt := map[string]string{"FOO": "bar"}
+	entries := differ.Diff(src, tgt)
+	found := findEntry(entries, "NEW")
 	if found == nil {
-		t.Fatal("expected entry for NEW_KEY")
+		t.Fatal("expected entry for NEW")
 	}
-	if found.Status != differ.StatusAdded {
-		t.Errorf("expected status %q, got %q", differ.StatusAdded, found.Status)
+	if found.ChangeType != differ.Added {
+		t.Errorf("expected Added, got %s", found.ChangeType)
 	}
-	if found.ValueB != "newval" {
-		t.Errorf("expected ValueB %q, got %q", "newval", found.ValueB)
+	if found.NewValue != "value" {
+		t.Errorf("unexpected NewValue: %q", found.NewValue)
 	}
 }
 
 func TestDiff_RemovedKey(t *testing.T) {
-	a := map[string]string{"FOO": "bar", "OLD_KEY": "oldval"}
-	b := map[string]string{"FOO": "bar"}
-
-	result := differ.Diff(a, b)
-	found := findEntry(result.Entries, "OLD_KEY")
+	src := map[string]string{"FOO": "bar"}
+	tgt := map[string]string{"FOO": "bar", "OLD": "gone"}
+	entries := differ.Diff(src, tgt)
+	found := findEntry(entries, "OLD")
 	if found == nil {
-		t.Fatal("expected entry for OLD_KEY")
+		t.Fatal("expected entry for OLD")
 	}
-	if found.Status != differ.StatusRemoved {
-		t.Errorf("expected status %q, got %q", differ.StatusRemoved, found.Status)
+	if found.ChangeType != differ.Removed {
+		t.Errorf("expected Removed, got %s", found.ChangeType)
+	}
+	if found.OldValue != "gone" {
+		t.Errorf("unexpected OldValue: %q", found.OldValue)
 	}
 }
 
 func TestDiff_ChangedKey(t *testing.T) {
-	a := map[string]string{"FOO": "old"}
-	b := map[string]string{"FOO": "new"}
-
-	result := differ.Diff(a, b)
-	found := findEntry(result.Entries, "FOO")
+	src := map[string]string{"FOO": "new"}
+	tgt := map[string]string{"FOO": "old"}
+	entries := differ.Diff(src, tgt)
+	found := findEntry(entries, "FOO")
 	if found == nil {
 		t.Fatal("expected entry for FOO")
 	}
-	if found.Status != differ.StatusChanged {
-		t.Errorf("expected status %q, got %q", differ.StatusChanged, found.Status)
+	if found.ChangeType != differ.Changed {
+		t.Errorf("expected Changed, got %s", found.ChangeType)
 	}
-	if found.ValueA != "old" || found.ValueB != "new" {
-		t.Errorf("unexpected values: ValueA=%q ValueB=%q", found.ValueA, found.ValueB)
+	if found.OldValue != "old" || found.NewValue != "new" {
+		t.Errorf("unexpected values: old=%q new=%q", found.OldValue, found.NewValue)
 	}
 }
 
 func TestDiff_EmptyMaps(t *testing.T) {
-	result := differ.Diff(map[string]string{}, map[string]string{})
-	if result.HasChanges() {
-		t.Error("expected no changes for empty maps")
+	entries := differ.Diff(map[string]string{}, map[string]string{})
+	if len(entries) != 0 {
+		t.Errorf("expected no entries, got %d", len(entries))
+	}
+}
+
+func TestDiff_SortedOutput(t *testing.T) {
+	src := map[string]string{"Z": "1", "A": "2", "M": "3"}
+	tgt := map[string]string{}
+	entries := differ.Diff(src, tgt)
+	for i := 1; i < len(entries); i++ {
+		if entries[i].Key < entries[i-1].Key {
+			t.Errorf("entries not sorted: %q before %q", entries[i-1].Key, entries[i].Key)
+		}
 	}
 }
 
