@@ -67,3 +67,23 @@ func TestPipeline_EmptyLayers(t *testing.T) {
 		t.Errorf("expected empty result, got %v", out)
 	}
 }
+
+func TestPipeline_ChainedReferences(t *testing.T) {
+	// Verify that variables resolved in earlier layers can be referenced
+	// transitively by variables defined in later layers.
+	layers := []map[string]string{
+		{"SCHEME": "https", "HOST": "example.com"},
+		{"BASE": "${SCHEME}://${HOST}"},
+		{"URL": "${BASE}/api"},
+	}
+	out, err := Pipeline(layers, Options{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if out["URL"] != "https://example.com/api" {
+		t.Errorf("expected \"https://example.com/api\", got %q", out["URL"])
+	}
+	if out["BASE"] != "https://example.com" {
+		t.Errorf("expected \"https://example.com\", got %q", out["BASE"])
+	}
+}
