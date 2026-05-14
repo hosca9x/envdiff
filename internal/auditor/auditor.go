@@ -76,6 +76,16 @@ func Summary(e Entry) string {
 	return fmt.Sprintf("[%s] %s touched %q in %s", ts, e.Actor, e.Key, e.Environment)
 }
 
+// Summaries returns a human-readable summary line for each audit Entry.
+// It is a convenience wrapper around Summary for processing a batch of entries.
+func Summaries(entries []Entry) []string {
+	lines := make([]string, len(entries))
+	for i, e := range entries {
+		lines[i] = Summary(e)
+	}
+	return lines
+}
+
 func changeLabel(t differ.ChangeType) string {
 	switch t {
 	case differ.Added:
