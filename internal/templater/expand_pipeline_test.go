@@ -87,3 +87,20 @@ func TestPipeline_ChainedReferences(t *testing.T) {
 		t.Errorf("expected \"https://example.com\", got %q", out["BASE"])
 	}
 }
+
+func TestPipeline_NoExpansionWithoutPlaceholder(t *testing.T) {
+	// Verify that values without placeholders are passed through unchanged.
+	layers := []map[string]string{
+		{"PLAIN": "no-vars-here", "NUM": "42"},
+	}
+	out, err := Pipeline(layers, Options{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if out["PLAIN"] != "no-vars-here" {
+		t.Errorf("expected \"no-vars-here\", got %q", out["PLAIN"])
+	}
+	if out["NUM"] != "42" {
+		t.Errorf("expected \"42\", got %q", out["NUM"])
+	}
+}
