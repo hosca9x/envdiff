@@ -100,6 +100,24 @@ func TestApply_ErrorPropagates(t *testing.T) {
 	}
 }
 
+func TestApply_ErrorContainsKey(t *testing.T) {
+	errFn := func(key, value string) (string, error) {
+		if key == "BAD" {
+			return "", errors.New("bad key")
+		}
+		return value, nil
+	}
+	input := map[string]string{"BAD": "val"}
+	tr := transformer.New(errFn)
+	_, err := tr.Apply(input)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if err.Error() == "" {
+		t.Errorf("expected non-empty error message, got empty string")
+	}
+}
+
 func TestApply_DoesNotMutateOriginal(t *testing.T) {
 	input := map[string]string{"KEY": "hello"}
 	tr := transformer.New(transformer.ToUpper())
